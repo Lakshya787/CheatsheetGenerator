@@ -1,15 +1,22 @@
 import os
+from pathlib import Path
 from typing import AsyncGenerator
 
 from dotenv import load_dotenv
 from openai import OpenAI, APIError, APIConnectionError, RateLimitError
 
-load_dotenv()
+
+# Find backend/.env
+BASE_DIR = Path(__file__).resolve().parents[1]
+ENV_FILE = BASE_DIR / ".env"
+
+load_dotenv(ENV_FILE)
 
 api_key = os.getenv("GROQ_API_KEY")
 
 if not api_key:
     raise RuntimeError("GROQ_API_KEY is not configured")
+
 
 client = OpenAI(
     api_key=api_key,

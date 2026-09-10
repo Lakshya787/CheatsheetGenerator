@@ -1,15 +1,12 @@
 from io import BytesIO
-import os
-import re
 import html
+import re
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
@@ -18,24 +15,65 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
-
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 # --------------------------------------------------
-# Unicode fonts
+# Unicode normalization
 # --------------------------------------------------
 
-FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-BOLD_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-MONO_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
+UNICODE_REPLACEMENTS = {
+    "\u2018": "'",   # left single quote
+    "\u2019": "'",   # right single quote
+    "\u201c": '"',   # left double quote
+    "\u201d": '"',   # right double quote
 
-if os.path.exists(FONT_PATH):
-    pdfmetrics.registerFont(TTFont("DejaVu", FONT_PATH))
+    "\u2013": "-",   # en dash
+    "\u2014": "-",   # em dash
+    "\u2011": "-",   # non-breaking hyphen
+    "\u2010": "-",   # hyphen
+    "\u2212": "-",   # minus sign
 
-if os.path.exists(BOLD_FONT_PATH):
-    pdfmetrics.registerFont(TTFont("DejaVu-Bold", BOLD_FONT_PATH))
+    "\u00a0": " ",   # non-breaking space
+    "\u2026": "...", # ellipsis
 
-if os.path.exists(MONO_FONT_PATH):
-    pdfmetrics.registerFont(TTFont("DejaVuMono", MONO_FONT_PATH))
+    "\u2192": "->",  # right arrow
+    "\u2190": "<-",  # left arrow
+    "\u2194": "<->", # left-right arrow
+
+    "\u2022": "-",   # bullet
+    "\u25cf": "-",   # black circle
+    "\u25aa": "-",   # small square
+}
+
+
+def normalize_unicode(text: str) -> str:
+    for old, new in UNICODE_REPLACEMENTS.items():
+        text = text.replace(old, new)
+
+    # Remove emoji / unsupported Unicode characters.
+    # Keep normal ASCII text.
+    text = "".join(
+        char for char in text
+        if ord(char) < 128
+    )
+
+    return text
+# --------------------------------------------------
+# Fonts
+# --------------------------------------------------
+
+# Windows fonts
+pdfmetrics.registerFont(
+    TTFont("Arial", r"C:\Windows\Fonts\arial.ttf")
+)
+
+pdfmetrics.registerFont(
+    TTFont("Arial-Bold", r"C:\Windows\Fonts\arialbd.ttf")
+)
+
+# Use built-in Courier for code
+CODE_FONT = "Courier"
 
 
 # --------------------------------------------------
@@ -43,6 +81,38 @@ if os.path.exists(MONO_FONT_PATH):
 # --------------------------------------------------
 
 def format_inline(text: str) -> str:
+    """
+    Convert basic Markdown into ReportLab markup.
+    """
+
+    # Normalize unsupported Unicode first
+    text = normalize_unicode(text)
+
+    # Escape XML characters
+    text = html.escape(text)
+
+    # Bold: **text**
+    text = re.sub(
+        r"\*\*(.+?)\*\*",
+        r"<b>\1</b>",
+        text,
+    )
+
+    # Italic: *text*
+    text = re.sub(
+        r"(?<!\*)\*([^*]+?)\*(?!\*)",
+        r"<i>\1</i>",
+        text,
+    )
+
+    # Inline code: `code`
+    text = re.sub(
+        r"`([^`]+)`",
+        r'<font name="Courier">\1</font>',
+        text,
+    )
+
+    return text
     """
     Convert basic Markdown into ReportLab markup.
     """
@@ -67,7 +137,7 @@ def format_inline(text: str) -> str:
     # Inline code: `code`
     text = re.sub(
         r"`([^`]+)`",
-        r'<font name="DejaVuMono">\1</font>',
+        r'<font name="Courier">\1</font>',
         text,
     )
 
@@ -149,7 +219,7 @@ def create_table(data, table_cell_style):
 
     formatted_data = []
 
-    for row_index, row in enumerate(data):
+    for row in data:
 
         formatted_row = []
 
@@ -178,7 +248,7 @@ def create_table(data, table_cell_style):
                     "FONTNAME",
                     (0, 0),
                     (-1, 0),
-                    "DejaVu-Bold",
+                    "Arial-Bold",
                 ),
 
                 (
@@ -257,7 +327,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
     title_style = ParagraphStyle(
         "CustomTitle",
         parent=styles["Title"],
-        fontName="DejaVu-Bold",
+        fontName="Arial-Bold",
         fontSize=20,
         leading=24,
         alignment=TA_LEFT,
@@ -271,7 +341,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
     heading2_style = ParagraphStyle(
         "CustomHeading2",
         parent=styles["Heading2"],
-        fontName="DejaVu-Bold",
+        fontName="Arial-Bold",
         fontSize=14,
         leading=18,
         spaceBefore=10,
@@ -285,7 +355,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
     heading3_style = ParagraphStyle(
         "CustomHeading3",
         parent=styles["Heading3"],
-        fontName="DejaVu-Bold",
+        fontName="Arial-Bold",
         fontSize=11,
         leading=14,
         spaceBefore=8,
@@ -299,7 +369,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
     body_style = ParagraphStyle(
         "CustomBody",
         parent=styles["BodyText"],
-        fontName="DejaVu",
+        fontName="Arial",
         fontSize=9,
         leading=13,
         spaceAfter=5,
@@ -323,7 +393,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
     code_style = ParagraphStyle(
         "CustomCode",
         parent=styles["Code"],
-        fontName="DejaVuMono",
+        fontName=CODE_FONT,
         fontSize=7.5,
         leading=10,
         leftIndent=8,
@@ -340,7 +410,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
     table_cell_style = ParagraphStyle(
         "TableCell",
         parent=body_style,
-        fontName="DejaVu",
+        fontName="Arial",
         fontSize=7.5,
         leading=10,
         spaceAfter=0,
@@ -401,7 +471,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
 
         if in_code_block:
 
-            code_lines.append(line)
+            code_lines.append(normalize_unicode(line))
 
             i += 1
             continue
