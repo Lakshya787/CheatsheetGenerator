@@ -1,375 +1,239 @@
-# Cheat Sheet Generator
-
-> Paste a documentation URL and get a clean, structured, downloadable cheat sheet.
-
-An AI-powered developer tool that crawls a documentation site, extracts the useful content, sends the assembled context to Groq, and streams a structured Markdown cheat sheet back to the browser.
-
-## What It Does
-
-1. Paste a documentation URL.
-2. The backend crawls relevant pages within the documentation site.
-3. Navigation, ads, boilerplate, and irrelevant pages are filtered out.
-4. Useful text and code blocks are extracted.
-5. Content is deduplicated and kept within the model's context budget.
-6. A single structured prompt is sent to Groq.
-7. The generated cheat sheet streams to the frontend through SSE.
-8. The result is rendered on the same page.
-9. Download it as **PDF** or **Markdown**.
-
-The UI is intentionally simple. The main engineering work is the pipeline:
-
-```text
-Documentation URL
-       ↓
-    Crawler
-       ↓
-   Page Filter
-       ↓
-Content Extractor
-       ↓
- Deduplication
-       ↓
-Context Assembler
-       ↓
-  Prompt Builder
-       ↓
-   Groq LLM
-       ↓
-  Stream Parser
-       ↓
- Page Renderer
-       ↓
- PDF / Markdown
-```
-
-## Features
-
-- Crawl documentation pages from a starting URL
-- Stay within the same domain and documentation path
-- Respect `robots.txt`
-- Limit crawl depth and total pages
-- Filter irrelevant documentation pages
-- Extract clean page content and code blocks
-- Preserve code-language hints when available
-- Deduplicate repeated content
-- Budget context before the LLM call
-- Generate a structured Markdown cheat sheet
-- Stream generation progressively using SSE
-- Render syntax-highlighted code
-- Copy code blocks to the clipboard
-- Export the generated cheat sheet as PDF
-- Export the raw generated Markdown
-
-## Example
-
-Input:
-
-```text
-https://go.dev/doc/
-```
-
-Output:
-
-```markdown
-# Go Cheat Sheet
-
-## Variables
-
-Short explanation of Go variables.
-
-```go
-name := "Lakshya"
-```
-
-## Functions
-
-Functions define reusable blocks of code.
-
-```go
-func add(a, b int) int {
-    return a + b
-}
-```
-```
-
-## Architecture
-
-### Backend Pipeline
-
-The backend is a fixed sequence of deterministic processing steps followed by one LLM generation step.
-
-| Step | Responsibility |
-|---|---|
-| Crawler | Discover documentation links |
-| Page Filter | Remove irrelevant pages |
-| Content Extractor | Extract useful text and code |
-| Deduplication | Remove repeated content |
-| Context Assembler | Build a token-safe context |
-| Prompt Builder | Create the generation prompt |
-| Groq API | Generate the cheat sheet |
-| Stream Parser | Process streamed output |
-| Export | Produce PDF/Markdown |
-
-### Frontend
-
-The frontend is a single-page experience:
-
-- Documentation URL input
-- Generate button
-- Generation status
-- Streaming cheat sheet output
-- Copy buttons for code blocks
-- PDF download
-- Markdown download
-
-No sidebar, dashboard, authentication flow, or multi-page navigation is required.
-
-## Tech Stack
-
-### Backend
-
-- **Python**
-- **FastAPI**
-- **Requests / HTTPX**
-- **BeautifulSoup**
-- **Groq API**
-- **Server-Sent Events (SSE)**
-
-### Frontend
-
-- **Next.js**
-- **TypeScript**
-- **Tailwind CSS**
-- **react-markdown**
-- **Shiki / Prism**
-
-### PDF Export
-
-- **WeasyPrint** or a headless-browser print step
-- PDF is generated from rendered HTML rather than a screenshot
-
-### Persistence
-
-None.
-
-The generated cheat sheet exists only in the current page/session. There is no database, authentication, account system, or saved history in v1.
-
-## Product Scope
-
-### Included in v1
-
-- One documentation URL
-- One-page UI
-- Documentation crawling
-- Content extraction
-- Relevance filtering
-- Deduplication
-- Context budgeting
-- One-shot Groq generation
-- Streaming output
-- Markdown rendering
-- Code highlighting
-- Code copying
-- PDF export
-- Markdown export
-
-### Explicitly Not Included
-
-- Authentication or user accounts
-- Database persistence
-- Multiple pages/routes
-- Sidebar or settings
-- Vector database / embeddings / RAG
-- LangChain or agent frameworks
-- Multi-step autonomous tool calling
-- Chat or follow-up questions
-- Billing or SaaS features
-- Collaborative editing
-- General-purpose scraping of arbitrary websites
-
-## Functional Requirements
-
-### Input
-
-- Accept a documentation URL.
-- Validate that the URL is reachable and returns HTML.
-- Show an inline error when validation fails.
-
-### Crawling
-
-- Start from the supplied documentation URL.
-- Discover same-domain, same-path links.
-- Default crawl depth: `2`.
-- Default page limit: `30`.
-- Normalize URLs to avoid duplicates.
-- Respect `robots.txt`.
-- Use reasonable request delays/concurrency limits.
-- Filter irrelevant pages before extraction.
-
-### Content Extraction
-
-- Remove navigation, headers, footers, ads, scripts, and styles.
-- Extract the main documentation content.
-- Preserve code blocks.
-- Preserve language hints where available.
-- Normalize extracted pages into:
-
-```text
-{
-  url,
-  title,
-  headings[],
-  body_text,
-  code_blocks[]
-}
-```
-
-- Deduplicate repeated content.
-
-### Generation
-
-- Keep assembled context within the model's context window.
-- Prioritize relevant pages when content exceeds the budget.
-- Use one fixed prompt template.
-- Generate one structured Markdown document.
-- Stream the response from the backend to the frontend through SSE.
-
-### Rendering
-
-- Render the Markdown on the same page.
-- Support headings and paragraphs.
-- Support syntax-highlighted code blocks.
-- Provide copy-to-clipboard controls.
-- Keep the output as one continuous document.
-
-### Downloads
-
-After generation:
-
-- **Download PDF** — export the rendered content while preserving readable headings and code blocks.
-- **Download Markdown** — save the raw generated Markdown as a `.md` file.
-
-## Structured Output
-
-The model returns one Markdown document.
-
-No JSON schema or per-section metadata is required in v1.
-
-```markdown
-# Go Cheat Sheet
-
-## Variables
-
-Short explanation...
-
-```go
-name := "Lakshya"
-```
-
-## Functions
-
-Short explanation...
-
-```go
-func add(a, b int) int {
-    return a + b
-}
-```
-```
-
-## User Flow
-
-```text
-Open application
-      ↓
-Paste documentation URL
-      ↓
-Click Generate
-      ↓
-Fetching documentation...
-      ↓
-Generating...
-      ↓
-Cheat sheet streams onto the page
-      ↓
-Generation complete
-      ↓
-Download PDF / Download Markdown
-```
-
-## Success Metrics
-
-| Metric | Target |
-|---|---:|
-| Time to first streamed content | `< 5s` |
-| Successful generation rate | `> 90%` on well-formed documentation sites |
-| Typical paste-to-download flow | `< 60s` |
-
-## Risks & Mitigations
-
-| Risk | Mitigation |
-|---|---|
-| Target site blocks or rate-limits crawlers | Respect `robots.txt`, add delays, cap requests, and show a clear error |
-| Irrelevant pages enter the context | Use URL and heading relevance heuristics |
-| Context exceeds the model budget | Prioritize relevant content before truncation |
-| Documentation HTML varies | Use general-purpose readability-style extraction |
-| PDF page breaks look poor | Generate from rendered HTML and test code-block page breaks |
-
-## Development Plan
-
-### MVP — 4–6 Hours
-
-| Milestone | Scope |
-|---|---|
-| **M1 — Pipeline Spike** | Crawl one documentation site, extract content, test Groq generation and SSE end-to-end |
-| **M2 — Core Pipeline** | Generalize crawling/extraction, filtering, deduplication, and context budgeting |
-| **M3 — Single Page UI** | URL input, generation button, streaming Markdown, syntax highlighting |
-
-### Polished Portfolio Version — 1–2 Days
-
-| Milestone | Scope |
-|---|---|
-| **M4 — Download** | PDF and Markdown export |
-| **M5 — Polish** | Error/retry handling, loading states, code copying, responsive layout |
-
-The polished version above is the intended v1 product.
-
-## Future Enhancements
-
-These are deliberately outside v1:
-
-- Multiple cheat-sheet modes
-- Interview Prep / Quick Revision / Beginner modes
-- Sidebar navigation or table of contents
-- Callouts, tables, and collapsible sections
-- Per-section source references
-- Saved generation history
-- Accounts and authentication
-- Multi-device synchronization
-- Topic-scoped generation
-- Non-HTML sources
-- Follow-up chat
-
-## Why This Project
-
-This project is intentionally small in surface area but technically meaningful.
-
-It demonstrates how to build an LLM-powered developer tool without hiding the important engineering behind an orchestration framework:
-
-- Web crawling
-- HTML parsing
-- Content extraction
-- Relevance filtering
-- Deduplication
-- Context management
-- Prompt engineering
-- Streaming LLM responses
-- Server-Sent Events
-- Markdown rendering
-- PDF generation
-
-The goal is a complete, understandable pipeline rather than a large application with unnecessary infrastructure.
+# CheatSheet.ai ⚡
+
+> **Turn any documentation URL into a clean, structured, downloadable cheat sheet in seconds.**
+
+[![Live Frontend](https://img.shields.io/badge/Frontend-Vercel-black?logo=vercel)](https://cheatsheet-generator-eight.vercel.app/)
+[![Live Backend](https://img.shields.io/badge/Backend-Render-46E3B7?logo=render)](https://cheatsheetgenerator.onrender.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Groq](https://img.shields.io/badge/AI-Groq%20LPU-f55036)](https://groq.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python)](https://www.python.org/)
 
 ---
 
-**Status:** v1 in development
+## 🌐 Live Deployments
+
+- **Frontend App**: [https://cheatsheet-generator-eight.vercel.app/](https://cheatsheet-generator-eight.vercel.app/)
+- **Backend API**: [https://cheatsheetgenerator.onrender.com/](https://cheatsheetgenerator.onrender.com/)
+
+---
+
+## 🚀 Overview
+
+**CheatSheet.ai** is an AI-powered developer tool designed to condense verbose official documentation into concise, actionable, and beautifully formatted technical reference sheets.
+
+Instead of reading through dozens of doc pages, paste any URL (e.g. `https://go.dev/doc/` or `https://react.dev/learn`). The backend crawls the site, strips out navigation and boilerplate, sends structured context to **Groq's ultra-fast LPU inference**, and streams back a real-time Markdown cheat sheet over **Server-Sent Events (SSE)**.
+
+---
+
+## ✨ Features
+
+- 🕷️ **HTML Scraper & Cleaner**: Fetches target documentation and strips scripts, styles, forms, and boilerplate using BeautifulSoup4.
+- ⚡ **Ultra-Fast Streaming**: Uses Server-Sent Events (`text/event-stream`) to stream tokens in real-time as the model generates them.
+- 🤖 **Groq LLM Acceleration**: Powered by high-throughput models (`openai/gpt-oss-120b`) via Groq's OpenAI-compatible API.
+- 🎨 **Modern Cyberpunk/Cyan UI**: Custom `#40f2dd` themed user interface with Lucide React iconography.
+- 💻 **Syntax-Highlighted Code Blocks**: Copy-to-clipboard buttons on all generated code snippets with language detection (`highlight.js`).
+- 📄 **PDF Export**: Server-side programmatic PDF generation with headings, bullet points, and code formatting via **ReportLab**.
+- 📝 **Markdown Download**: Instant one-click export of raw Markdown (`.md`).
+- 🔒 **Zero Persistence**: No database, no user tracking, no authentication required.
+
+---
+
+## 🏗️ Architecture & Pipeline
+
+```text
+[ Documentation URL ]
+         │
+         ▼
+[ BeautifulSoup4 Scraper ] ──> Strips <script>, <style>, <nav>, ads
+         │
+         ▼
+[ Structured Prompt Builder ]
+         │
+         ▼
+[ Groq AI Inference Engine ] ──> gpt-oss-120b (streaming)
+         │
+         ▼ (SSE stream: status -> token -> done)
+[ Next.js 16 + React Markdown ] ──> Real-time token rendering
+         │
+    ┌────┴─────────────────┐
+    ▼                      ▼
+[ Download .md ]    [ Programmatic PDF (ReportLab) ]
+```
+
+### Server-Sent Events (SSE) Protocol
+
+| Event Type | Payload | Description |
+|---|---|---|
+| `status` | `{"type": "status", "message": "Fetching page…"}` | Progress updates during crawl/prep |
+| `token` | `{"type": "token", "token": "..."}` | Real-time generated Markdown token stream |
+| `done` | `{"type": "done"}` | Stream completion signal |
+| `error` | `{"type": "error", "message": "..."}` | Error message if extraction or LLM fails |
+
+---
+
+## 📂 Project Structure
+
+```text
+Cheatsheet Generator/
+├── backend/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py          # FastAPI application, CORS & SSE streaming
+│   │   ├── llm.py           # Groq/OpenAI streaming generator
+│   │   ├── pdf.py           # Programmatic PDF generation with ReportLab
+│   │   ├── schemas.py       # Pydantic request models
+│   │   └── scraper.py       # Web scraping & HTML sanitization
+│   ├── .env                 # Backend environment variables (ignored)
+│   ├── .env.sample          # Sample environment variables
+│   └── requirements.txt     # Python dependencies
+│
+├── frontend/
+│   ├── app/
+│   │   ├── globals.css      # Custom color tokens (#40f2dd theme) & typography
+│   │   ├── layout.tsx       # Metadata, openGraph & favicon configuration
+│   │   ├── page.tsx         # Main UI, SSE event consumer & PDF exporter
+│   │   └── icon.png         # Next.js app icon
+│   ├── lib/
+│   │   └── stream.ts        # SSE streaming utility client
+│   ├── public/
+│   │   └── cheaticon.png    # Brand logo & favicon source
+│   ├── .env.local           # Local environment variables
+│   ├── .env.example         # Example frontend environment variables
+│   ├── package.json         # Node.js dependencies
+│   └── tsconfig.json        # TypeScript configuration
+└── README.md
+```
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Turbopack)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Markdown & Syntax Highlighting**: `react-markdown`, `remark-gfm`, `rehype-highlight`, `rehype-raw`, `highlight.js`
+
+### Backend
+- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/)
+- **AI & LLM**: [Groq API](https://groq.com/) via [OpenAI Python SDK](https://github.com/openai/openai-python)
+- **HTML Parsing**: [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/) + [lxml](https://lxml.de/)
+- **PDF Generation**: [ReportLab](https://www.reportlab.com/)
+- **Streaming**: Native FastAPI `StreamingResponse` (`text/event-stream`)
+
+---
+
+## ⚙️ Environment Variables
+
+### Backend (`backend/.env`)
+
+```env
+# Required: Your Groq API key (https://console.groq.com/keys)
+GROQ_API_KEY=gsk_your_groq_api_key
+
+# Optional: Comma-separated allowed CORS origins
+ALLOWED_ORIGINS=http://localhost:3000,https://cheatsheet-generator-eight.vercel.app
+```
+
+### Frontend (`frontend/.env.local` or Vercel Settings)
+
+```env
+# Backend API base URL
+NEXT_PUBLIC_BACKEND_URL=https://cheatsheetgenerator.onrender.com
+```
+
+*(For local development, set `NEXT_PUBLIC_BACKEND_URL=http://localhost:8000`)*
+
+---
+
+## 💻 Local Development Setup
+
+### 1. Prerequisites
+- **Python**: 3.10+
+- **Node.js**: 18+ and `npm`
+
+### 2. Backend Setup
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Create and activate a virtual environment
+python -m venv venv
+
+# Windows:
+.\venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create .env file and add your GROQ_API_KEY
+cp .env.sample .env
+
+# Start FastAPI server
+uvicorn app.main:app --reload --port 8000
+```
+
+The backend will be live at `http://localhost:8000`. Test health: `http://localhost:8000/`.
+
+### 3. Frontend Setup
+
+```bash
+# In a new terminal, navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+The frontend will be live at `http://localhost:3000`.
+
+---
+
+## 📡 API Reference
+
+### `GET /`
+Health check endpoint.
+- **Response**: `{"message": "Cheatsheet Generator API"}`
+
+### `POST /api/generate`
+Streams generated cheatsheet over Server-Sent Events.
+- **Request Body**:
+  ```json
+  {
+    "url": "https://go.dev/doc/"
+  }
+  ```
+- **Response**: `text/event-stream` chunks (`data: {"type": "token", "token": "..."}\n\n`)
+
+### `POST /api/download/pdf`
+Generates and downloads a formatted PDF from Markdown.
+- **Request Body**:
+  ```json
+  {
+    "markdown": "# Go Cheatsheet\n\n## Variables\n..."
+  }
+  ```
+- **Response**: `application/pdf` binary download with `Content-Disposition: attachment; filename=cheatsheet.pdf`.
+
+---
+
+## 👤 Author
+
+**Lakshya**
+- GitHub: [@Lakshya787](https://github.com/Lakshya787)
+- Frontend: [cheatsheet-generator-eight.vercel.app](https://cheatsheet-generator-eight.vercel.app/)
+
+---
+
+## 📄 License
+
+This project is open-source under the [MIT License](LICENSE).
