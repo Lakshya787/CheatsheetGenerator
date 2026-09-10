@@ -15,8 +15,10 @@ export interface StreamCallbacks {
   onError: (message: string) => void;
 }
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+const BACKEND_URL = (
+  process.env.NEXT_PUBLIC_BACKEND_URL ??
+  "https://cheatsheetgenerator.onrender.com"
+).replace(/\/+$/, "");
 
 export async function startGeneration(
   url: string,
