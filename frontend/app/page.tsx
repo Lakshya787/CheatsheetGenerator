@@ -5,6 +5,18 @@ import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+import {
+  Zap,
+  Download,
+  FileDown,
+  Copy,
+  Check,
+  RotateCcw,
+  AlertTriangle,
+  CheckCircle2,
+  Globe,
+  Scissors,
+} from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -19,88 +31,7 @@ type AppState = "idle" | "running" | "done" | "error";
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 
-// ---------------------------------------------------------------------------
-// Icons (inline SVG to avoid extra deps)
-// ---------------------------------------------------------------------------
 
-const IconBolt = () => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-  </svg>
-);
-
-const IconDownload = () => (
-  <svg
-    width="15"
-    height="15"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-    <polyline points="7 10 12 15 17 10" />
-    <line x1="12" y1="15" x2="12" y2="3" />
-  </svg>
-);
-
-const IconCopy = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </svg>
-);
-
-const IconCheck = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-
-const IconRefresh = () => (
-  <svg
-    width="15"
-    height="15"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <polyline points="23 4 23 10 17 10" />
-    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-  </svg>
-);
 
 // ---------------------------------------------------------------------------
 // Code block component (copy-to-clipboard)
@@ -192,7 +123,7 @@ function CodeBlock({
             transition: "all 0.15s",
           }}
         >
-          {copied ? <IconCheck /> : <IconCopy />}
+          {copied ? <Check size={13} /> : <Copy size={13} />}
           {copied ? "Copied!" : "Copy"}
         </button>
       </div>
@@ -386,6 +317,30 @@ export default function Home() {
     URL.revokeObjectURL(href);
   }, [markdown]);
 
+  // ---- Download PDF ----------------------------------------------------
+
+  const handleDownloadPDF = useCallback(async () => {
+    if (!markdown) return;
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/download/pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markdown }),
+      });
+      if (!response.ok) throw new Error(`Server returned ${response.status}`);
+      const blob = await response.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = "cheatsheet.pdf";
+      a.click();
+      URL.revokeObjectURL(href);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+    }
+  }, [markdown]);
+
+
   // ---- Key handler -----------------------------------------------------
 
   const handleKeyDown = useCallback(
@@ -413,7 +368,7 @@ export default function Home() {
       {/* ── Navbar ─────────────────────────────────────────────────────── */}
       <nav
         style={{
-          borderBottom: "1px solid var(--border)",
+          borderBottom: "1px solid rgba(0,0,0,0.08)",
           padding: "0 24px",
           height: "56px",
           display: "flex",
@@ -421,35 +376,27 @@ export default function Home() {
           justifyContent: "space-between",
           position: "sticky",
           top: 0,
-          background: "rgba(10,10,15,0.85)",
+          background: "rgba(64, 242, 221, 0.88)",
           backdropFilter: "blur(12px)",
           zIndex: 100,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              background: "linear-gradient(135deg, #7c6ef7, #a78bfa)",
-              borderRadius: "8px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <IconBolt />
-          </div>
+          <img
+            src="/cheaticon.png"
+            alt="CheatSheet.ai logo"
+            style={{ width: 32, height: 32, borderRadius: "8px" }}
+          />
           <span
             style={{
               fontWeight: 700,
               fontSize: "1rem",
-              color: "#fff",
+              color: "#0a0a0f",
               letterSpacing: "-0.01em",
             }}
           >
             CheatSheet
-            <span style={{ color: "var(--accent)" }}>.ai</span>
+            <span style={{ color: "#006663" }}>.ai</span>
           </span>
         </div>
 
@@ -457,28 +404,27 @@ export default function Home() {
           <button
             onClick={handleReset}
             style={{
-              background: "transparent",
-              border: "1px solid var(--border)",
+              background: "rgba(0,0,0,0.06)",
+              border: "1px solid rgba(0,0,0,0.15)",
               borderRadius: "8px",
               padding: "6px 14px",
-              color: "var(--text-muted)",
+              color: "#0a0a0f",
               cursor: "pointer",
               fontSize: "0.8rem",
               display: "flex",
               alignItems: "center",
               gap: "6px",
+              fontWeight: 500,
               transition: "all 0.15s",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text)";
-              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.background = "rgba(0,0,0,0.12)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-muted)";
-              e.currentTarget.style.borderColor = "var(--border)";
+              e.currentTarget.style.background = "rgba(0,0,0,0.06)";
             }}
           >
-            <IconRefresh />
+            <RotateCcw size={14} />
             Start over
           </button>
         )}
@@ -499,24 +445,21 @@ export default function Home() {
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "6px",
-                background: "var(--accent-glow)",
-                border: "1px solid #7c6ef750",
+                gap: "8px",
+                background: "rgba(0, 0, 0, 0.08)",
+                border: "1px solid rgba(0, 0, 0, 0.12)",
                 borderRadius: "20px",
-                padding: "5px 14px",
+                padding: "6px 14px",
                 fontSize: "0.78rem",
-                color: "var(--accent-hover)",
+                color: "#0a0a0f",
                 marginBottom: "24px",
-                fontWeight: 500,
+                fontWeight: 600,
               }}
             >
-              <span
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: "var(--accent-hover)",
-                }}
+              <img
+                src="/cheaticon.png"
+                alt=""
+                style={{ width: 16, height: 16, borderRadius: "4px" }}
               />
               AI-Powered Documentation Summarizer
             </div>
@@ -529,7 +472,7 @@ export default function Home() {
                 lineHeight: 1.15,
                 letterSpacing: "-0.03em",
                 margin: "0 0 16px",
-                color: "#fff",
+                color: "#0a0a0f",
               }}
             >
               Paste a doc link.
@@ -537,7 +480,7 @@ export default function Home() {
               <span
                 style={{
                   background:
-                    "linear-gradient(135deg, #7c6ef7 0%, #c084fc 50%, #818cf8 100%)",
+                    "linear-gradient(135deg, #09090b 0%, #0369a1 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
@@ -550,10 +493,11 @@ export default function Home() {
             <p
               style={{
                 fontSize: "1.05rem",
-                color: "var(--text-muted)",
+                color: "#1e293b",
                 maxWidth: "480px",
                 margin: "0 auto 40px",
                 lineHeight: 1.6,
+                fontWeight: 500,
               }}
             >
               Drop any documentation URL. We crawl, extract, and generate a
@@ -627,13 +571,13 @@ export default function Home() {
                 style={{
                   background:
                     url.trim()
-                      ? "linear-gradient(135deg, #7c6ef7 0%, #9b74f5 100%)"
+                      ? "linear-gradient(135deg, #40f2dd 0%, #1cd4bd 100%)"
                       : "var(--surface-2)",
                   border: "none",
                   borderRadius: "10px",
                   padding: "10px 22px",
-                  color: url.trim() ? "#fff" : "var(--text-muted)",
-                  fontWeight: 600,
+                  color: url.trim() ? "#0a0a0f" : "var(--text-muted)",
+                  fontWeight: 700,
                   fontSize: "0.9rem",
                   cursor: url.trim() ? "pointer" : "not-allowed",
                   whiteSpace: "nowrap",
@@ -643,11 +587,11 @@ export default function Home() {
                   gap: "8px",
                   transition: "all 0.15s",
                   boxShadow: url.trim()
-                    ? "0 2px 12px rgba(124,110,247,0.4)"
+                    ? "0 2px 14px rgba(64,242,221,0.5)"
                     : "none",
                 }}
               >
-                <IconBolt />
+                <Zap size={16} />
                 Generate
               </button>
             )}
@@ -658,8 +602,9 @@ export default function Home() {
             <p
               style={{
                 fontSize: "0.78rem",
-                color: "var(--text-muted)",
+                color: "#1e293b",
                 marginTop: "12px",
+                fontWeight: 500,
               }}
             >
               Try:{" "}
@@ -674,7 +619,8 @@ export default function Home() {
                   style={{
                     background: "none",
                     border: "none",
-                    color: "var(--accent-hover)",
+                    color: "#0a0a0f",
+                    fontWeight: 600,
                     cursor: "pointer",
                     fontSize: "0.78rem",
                     fontFamily: "inherit",
@@ -723,7 +669,7 @@ export default function Home() {
               gap: "14px",
             }}
           >
-            <span style={{ fontSize: "1.2rem" }}>⚠️</span>
+            <AlertTriangle size={20} color="#f87171" style={{ flexShrink: 0, marginTop: "2px" }} />
             <div>
               <p
                 style={{
@@ -760,7 +706,7 @@ export default function Home() {
                   gap: "6px",
                 }}
               >
-                <IconRefresh />
+                <RotateCcw size={14} />
                 Try again
               </button>
             </div>
@@ -788,7 +734,7 @@ export default function Home() {
                 className="fade-in"
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span style={{ fontSize: "1.1rem" }}>✅</span>
+                  <CheckCircle2 size={18} color="var(--green)" style={{ flexShrink: 0 }} />
                   <span
                     style={{
                       color: "var(--green)",
@@ -826,32 +772,40 @@ export default function Home() {
                       e.currentTarget.style.color = "var(--text)";
                     }}
                   >
-                    <IconDownload />
+                    <Download size={14} />
                     Download .md
                   </button>
 
-                  {/* PDF — placeholder for user to implement */}
+                  {/* PDF download */}
                   <button
-                    title="PDF export — coming soon (implement in backend/generator.py)"
+                    onClick={handleDownloadPDF}
                     style={{
                       display: "flex",
                       alignItems: "center",
                       gap: "7px",
-                      background: "linear-gradient(135deg, #7c6ef7, #9b74f5)",
+                      background: "linear-gradient(135deg, #40f2dd, #14b8a6)",
                       border: "none",
                       borderRadius: "8px",
                       padding: "8px 16px",
-                      color: "#fff",
-                      cursor: "not-allowed",
+                      color: "#0a0a0f",
+                      cursor: "pointer",
                       fontSize: "0.85rem",
-                      fontWeight: 500,
+                      fontWeight: 600,
                       fontFamily: "inherit",
-                      opacity: 0.5,
+                      boxShadow: "0 2px 12px rgba(64,242,221,0.4)",
+                      transition: "all 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = "0.85";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = "1";
                     }}
                   >
-                    <IconDownload />
+                    <FileDown size={14} />
                     Download PDF
                   </button>
+
                 </div>
               </div>
             )}
@@ -936,24 +890,24 @@ export default function Home() {
             >
               {[
                 {
-                  icon: "🕷️",
+                  icon: Globe,
                   title: "Smart Crawl",
                   desc: "Discovers up to 30 doc pages automatically",
                 },
                 {
-                  icon: "✂️",
+                  icon: Scissors,
                   title: "Clean Extract",
                   desc: "Strips nav, ads & boilerplate",
                 },
                 {
-                  icon: "⚡",
+                  icon: Zap,
                   title: "Live Stream",
                   desc: "Cheat sheet renders as it's generated",
                 },
                 {
-                  icon: "💾",
+                  icon: FileDown,
                   title: "Download",
-                  desc: "Export as Markdown instantly",
+                  desc: "Export as Markdown or PDF instantly",
                 },
               ].map((f) => (
                 <div
@@ -966,8 +920,15 @@ export default function Home() {
                     textAlign: "left",
                   }}
                 >
-                  <div style={{ fontSize: "1.4rem", marginBottom: "8px" }}>
-                    {f.icon}
+                  <div
+                    style={{
+                      color: "var(--accent)",
+                      marginBottom: "10px",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    <f.icon size={22} />
                   </div>
                   <div
                     style={{
@@ -994,11 +955,12 @@ export default function Home() {
       {/* ── Footer ─────────────────────────────────────────────────────── */}
       <footer
         style={{
-          borderTop: "1px solid var(--border)",
+          borderTop: "1px solid rgba(0,0,0,0.08)",
           padding: "16px 24px",
           textAlign: "center",
           fontSize: "0.78rem",
-          color: "var(--text-muted)",
+          color: "#0a0a0f",
+          fontWeight: 500,
         }}
       >
         Built by{" "}
@@ -1006,7 +968,7 @@ export default function Home() {
           href="https://github.com/Lakshya787"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: "var(--accent-hover)", textDecoration: "none" }}
+          style={{ color: "#000", fontWeight: 700, textDecoration: "underline" }}
         >
           Lakshya
         </a>{" "}

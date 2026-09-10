@@ -2,13 +2,13 @@
 @import "highlight.js/styles/github-dark.css";
 
 :root {
-  --bg: #0a0a0f;
+  --bg: #40f2dd;
   --surface: #111118;
   --surface-2: #1a1a24;
   --border: #2a2a3a;
-  --accent: #7c6ef7;
-  --accent-glow: #7c6ef740;
-  --accent-hover: #9b90fa;
+  --accent: #40f2dd;
+  --accent-glow: #40f2dd40;
+  --accent-hover: #1cd4bd;
   --text: #e8e8f0;
   --text-muted: #8888a0;
   --green: #4ade80;
