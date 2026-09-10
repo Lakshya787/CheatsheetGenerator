@@ -15,8 +15,6 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 
 # --------------------------------------------------
 # Unicode normalization
@@ -48,31 +46,48 @@ UNICODE_REPLACEMENTS = {
 
 
 def normalize_unicode(text: str) -> str:
+    """
+    Make generated text safe for ReportLab built-in fonts.
+
+    Common Unicode punctuation/symbols are converted to readable ASCII.
+    Any remaining non-ASCII character is removed as a final safety net.
+    This prevents square-box characters in the generated PDF.
+    """
+
     for old, new in UNICODE_REPLACEMENTS.items():
         text = text.replace(old, new)
 
-    # Remove emoji / unsupported Unicode characters.
-    # Keep normal ASCII text.
-    text = "".join(
-        char for char in text
-        if ord(char) < 128
-    )
+    extra_replacements = {
+        "\u2713": "[OK]",
+        "\u2714": "[OK]",
+        "\u2717": "[X]",
+        "\u2718": "[X]",
+        "\u00d7": "x",
+        "\u00b7": ".",
+        "\u00b0": " deg",
+        "\u2260": "!=",
+        "\u2264": "<=",
+        "\u2265": ">=",
+        "\u2248": "~",
+        "\u221e": "infinity",
+        "\u03bb": "lambda",
+        "\u03bc": "mu",
+        "\u03c0": "pi",
+    }
 
-    return text
+    for old, new in extra_replacements.items():
+        text = text.replace(old, new)
+
+    # Final safety net: Helvetica/Courier are ASCII-safe.
+    return "".join(char for char in text if ord(char) < 128)
 # --------------------------------------------------
 # Fonts
 # --------------------------------------------------
 
-# Windows fonts
-pdfmetrics.registerFont(
-    TTFont("Arial", r"C:\Windows\Fonts\arial.ttf")
-)
-
-pdfmetrics.registerFont(
-    TTFont("Arial-Bold", r"C:\Windows\Fonts\arialbd.ttf")
-)
-
-# Use built-in Courier for code
+# ReportLab built-in fonts are platform-independent.
+# This works on both Windows and Render/Linux.
+BODY_FONT = "Helvetica"
+BOLD_FONT = "Helvetica-Bold"
 CODE_FONT = "Courier"
 
 
@@ -248,7 +263,7 @@ def create_table(data, table_cell_style):
                     "FONTNAME",
                     (0, 0),
                     (-1, 0),
-                    "Arial-Bold",
+                    BOLD_FONT,
                 ),
 
                 (
@@ -327,7 +342,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
     title_style = ParagraphStyle(
         "CustomTitle",
         parent=styles["Title"],
-        fontName="Arial-Bold",
+        fontName=BOLD_FONT,
         fontSize=20,
         leading=24,
         alignment=TA_LEFT,
@@ -341,7 +356,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
     heading2_style = ParagraphStyle(
         "CustomHeading2",
         parent=styles["Heading2"],
-        fontName="Arial-Bold",
+        fontName=BOLD_FONT,
         fontSize=14,
         leading=18,
         spaceBefore=10,
@@ -355,7 +370,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
     heading3_style = ParagraphStyle(
         "CustomHeading3",
         parent=styles["Heading3"],
-        fontName="Arial-Bold",
+        fontName=BOLD_FONT,
         fontSize=11,
         leading=14,
         spaceBefore=8,
@@ -369,7 +384,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
     body_style = ParagraphStyle(
         "CustomBody",
         parent=styles["BodyText"],
-        fontName="Arial",
+        fontName=BODY_FONT,
         fontSize=9,
         leading=13,
         spaceAfter=5,
@@ -410,7 +425,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
     table_cell_style = ParagraphStyle(
         "TableCell",
         parent=body_style,
-        fontName="Arial",
+        fontName=BODY_FONT,
         fontSize=7.5,
         leading=10,
         spaceAfter=0,
@@ -581,7 +596,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
 
             story.append(
                 Paragraph(
-                    "• " + format_inline(text),
+                    "- " + format_inline(text),
                     bullet_style,
                 )
             )
@@ -592,7 +607,7 @@ def create_pdf(cheatsheet: str) -> BytesIO:
 
             story.append(
                 Paragraph(
-                    "• " + format_inline(text),
+                    "- " + format_inline(text),
                     bullet_style,
                 )
             )
