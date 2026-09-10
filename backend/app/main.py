@@ -1,5 +1,7 @@
 import json
 import asyncio
+import os
+from dotenv import load_dotenv
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,15 +12,29 @@ from .scraper import fetch_website_contents
 from .llm import stream_cheatsheet
 from .pdf import create_pdf
 
+load_dotenv()
+
 app = FastAPI()
+
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+else:
+    origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://cheatsheet-generator-eight.vercel.app",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*cheatsheet-generator.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 @app.get("/")
